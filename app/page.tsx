@@ -7,14 +7,16 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   const [inputValue, setInputValue] = useState<string>("");
-  const [inputUrl, setInputUrl] = useState<string>("");
+  const [inputUrl, setInputUrl] = useState<string>();
   const [imgData, setImgData] = useState<Blob>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [imgUrl, setImgUrl] = useState<string>();
+  const [imgSizeFull, setImgSizeFull] = useState<boolean>(false);
 
   useEffect(() => {
     if (inputUrl) {
       setIsLoading(true);
+      setImgSizeFull(false);
       fetch(`/api/image?url=${inputUrl}`)
         .then((res) => res.blob())
         .then((blob) => {
@@ -67,7 +69,14 @@ export default function Home() {
       </g>
     </svg>
   ) : imgUrl ? (
-    <img src={imgUrl} alt="Full size image (Save as...)" />
+    <img
+      src={imgUrl}
+      alt="Full size image (Save as...)"
+      onClick={() =>
+        imgSizeFull ? setImgSizeFull(false) : setImgSizeFull(true)
+      }
+      className={imgSizeFull ? "cursor-zoom-out" : "cursor-zoom-in"}
+    />
   ) : (
     <img
       src="https://images.unsplash.com/flagged/photo-1572392640988-ba48d1a74457?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NHx8YXJ0fGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60"
@@ -79,7 +88,8 @@ export default function Home() {
     <>
       <div className={inter.className}>
         <div className="pt-10">
-          <h1 className="text-center text-2xl font-bold ">
+          <h1 className="text-center text-xl font-semibold">
+            Download zoomify images from{" "}
             <a href="https://catalog.shm.ru/" className="text-amber-200">
               State Historical Museum
             </a>{" "}
@@ -90,7 +100,7 @@ export default function Home() {
             >
               The Pushkin Museum
             </a>{" "}
-            Downloader
+            in full quality.
           </h1>
         </div>
 
@@ -135,7 +145,12 @@ export default function Home() {
           </div>
         </div>
 
-        <section className="flex justify-center bg-slate-600 h-[700px]">
+        <section
+          className={
+            "flex justify-center bg-slate-600 " +
+            (imgSizeFull ? "h-fit" : "h-[700px]")
+          }
+        >
           {imgDOM}
         </section>
       </div>

@@ -1,18 +1,12 @@
 // https://beta.nextjs.org/docs/routing/route-handlers
 import axios, { AxiosResponse } from "axios";
 import https from "https";
-import sizeOf from "image-size";
 import Jimp from "jimp";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 const axiosWithSSL = axios.create({ httpsAgent });
-
-interface ImageDimensions {
-  width: number;
-  height: number;
-}
 
 const tileSize = 512;
 
@@ -25,11 +19,8 @@ export async function GET(request: Request): Promise<Response> {
   const regex = /<meta property="og:image" content="(.*?)\?w=1000&amp;h=1000/;
   const match = html.match(regex);
   if (match) {
-    const imageUrl = match[1];
-    console.log(imageUrl);
-    const { width, height } = await getImageDimensions(
-      imageUrl + "?w=2000&h=2000"
-    );
+    const imageUrl: string = match[1];
+    const { width, height } = await getImageDimensions(imageUrl);
 
     const wStep = Math.floor(width / tileSize);
     const hStep = Math.floor(height / tileSize);
@@ -50,7 +41,9 @@ export async function GET(request: Request): Promise<Response> {
         }
       }
     }
+
     console.log(tileUrls);
+    console.log(tileUrls.length);
 
     const imageBuffer = await getMergedImage(
       tileUrls,
@@ -61,7 +54,6 @@ export async function GET(request: Request): Promise<Response> {
     );
     const headers = {
       "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=31536000, immutable",
     };
 
     return new Response(imageBuffer, { status: 200, headers: headers });
@@ -71,21 +63,12 @@ export async function GET(request: Request): Promise<Response> {
   }
 }
 
-async function getImageDimensions(url: string): Promise<ImageDimensions> {
-  try {
-    const response = await axiosWithSSL.get(url, {
-      responseType: "arraybuffer",
-    });
-    const dimensions = sizeOf(response.data);
-    if (dimensions.width && dimensions.height) {
-      return { width: dimensions.width, height: dimensions.height };
-    } else {
-      return { width: -1, height: -1 };
-    }
-  } catch (error) {
-    console.error(error);
-    return { width: -1, height: -1 };
-  }
+async function getImageDimensions(
+  url: string
+): Promise<{ width: number; height: number }> {
+  const response = await axiosWithSSL.get(url.replace(".jpg", ".json"));
+  const { width, height } = response.data;
+  return { width: width, height: height };
 }
 
 async function getMergedImage(
@@ -138,19 +121,7 @@ async function getMergedImage(
   return await croppedImage.getBufferAsync(Jimp.MIME_PNG);
 }
 
-// 2000:0000 //0
-// 4000:0000 //1
-// 0000:2000 //3
-// 2000:2000
-// 4000:2000
-// 0000:4000
-// 2000:4000
-// 4000:4000
-// 0000:6000 //9  !
-// 2000:6000 //10 !
-// 4000:6000 //11 !
-// 0000:8000 //12 !
-
+// https://catalog.shm.ru/entity/OBJECT/2117418?fund_ier=647759298&index=33
 // https://catalog.shm.ru/entity/OBJECT/2137429
 
 // https://collection.pushkinmuseum.art/en/entity/OBJECT/77609

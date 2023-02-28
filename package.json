@@ -1,5 +1,5 @@
 {
-  "name": "shm-pushkin-downloader",
+  "name": "pushkin-downloader",
   "version": "0.1.0",
   "private": true,
   "scripts": {
