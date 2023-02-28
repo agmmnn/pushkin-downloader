@@ -29,8 +29,8 @@ export async function GET(request: Request) {
     );
     const tileSize = 512;
     const { wStep, hStep } = {
-      wStep: parseInt(width / tileSize),
-      hStep: parseInt(height / tileSize),
+      wStep: parseInt(String(width / tileSize)),
+      hStep: parseInt(String(height / tileSize)),
     };
     const { wMod, hMod } = {
       wMod: width % tileSize ? width % tileSize : 512,
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     return new Response(imageUrl);
   } else {
     console.log("unsuccess");
-    return Response.json({ error: "not found" });
+    return new Response("not found");
   }
 }
 
