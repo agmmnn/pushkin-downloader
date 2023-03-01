@@ -29,35 +29,27 @@ export async function GET(request: Request): Promise<Response> {
 
     const { width, height } = imageDimensions;
     const { tileWidth, tileHeight } = tileDimensions;
-    console.log({ width, height }, { tileWidth, tileHeight });
 
     const wStep = Math.floor(width / tileSize);
     const hStep = Math.floor(height / tileSize);
     const wMod = width % tileSize;
     const hMod = height % tileSize;
-
     const tileScaleRatio = tileWidth / tileSize;
-    // const { w, h } = {
-    //   w: Math.round(wMod || tileSize * tileScaleRatio),
-    //   h: Math.round(hMod || tileSize * tileScaleRatio),
-    // };
 
     const tileUrls: string[] = [];
-
     for (let i = 0; i < hStep + 1; i += 1) {
       for (let j = 0; j < wStep + 1; j += 1) {
         const cw = j === wStep ? wMod : tileSize;
         const ch = i === hStep ? hMod : tileSize;
-        const w =
-          j === wStep
-            ? Math.ceil(wMod * tileScaleRatio || tileSize * tileScaleRatio)
-            : tileWidth;
-        const h =
-          i === hStep
-            ? Math.ceil(hMod * tileScaleRatio || tileSize * tileScaleRatio)
-            : tileHeight;
+        let w = 2000;
+        let h = 2000;
 
         if (cw !== 0 && ch !== 0) {
+          if (j === wStep && i === hStep) {
+            w = Math.ceil(wMod * tileScaleRatio || tileSize * tileScaleRatio);
+            h = Math.ceil(hMod * tileScaleRatio || tileSize * tileScaleRatio);
+          }
+
           tileUrls.push(
             `${imageUrl}?w=${w}&h=${h}&cl=${j * tileSize}&ct=${
               i * tileSize
@@ -147,14 +139,14 @@ async function getMergedImage(
   let x = 0,
     y = 0;
 
-  for (let i = 0; i < tileImages.length; i += 1) {
-    mergedImage.composite(tileImages[i], x, y);
+  tileImages.forEach((tileImage, i) => {
+    mergedImage.composite(tileImage, x, y);
     x += maxWidth;
     if (i % columns === columns - 1) {
       x = 0;
       y += maxHeight;
     }
-  }
+  });
 
   const croppedImage = mergedImage.crop(
     0,
@@ -163,19 +155,15 @@ async function getMergedImage(
     (rows - 1) * maxHeight + ch * ratio
   );
 
-  return await mergedImage.getBufferAsync(Jimp.MIME_PNG);
+  return await croppedImage.getBufferAsync(Jimp.MIME_PNG);
 }
 
 // https://catalog.shm.ru/entity/OBJECT/2117418?fund_ier=647759298&index=33
 // https://catalog.shm.ru/entity/OBJECT/2137429
-
 // https://collection.pushkinmuseum.art/en/entity/OBJECT/77609
-// http://localhost:3000/api/image?url=https%3A%2F%2Fcollection.pushkinmuseum.art%2Fen%2Fentity%2FOBJECT%2F77609
-
 // https://collection.pushkinmuseum.art/en/entity/OBJECT/262426
-// http://localhost:3000/api/image?url=https%3A%2F%2Fcollection.pushkinmuseum.art%2Fen%2Fentity%2FOBJECT%2F262426
-
-//https://collection.pushkinmuseum.art/cross-search?query=art
-//https://collection.pushkinmuseum.art/entity/OBJECT/787695?query=art&index=0
-//https://collection.pushkinmuseum.art/entity/OBJECT/135111?query=art&index=6
-//https://collection.pushkinmuseum.art/api/spf/qYrzjvdtckwaNjk7TC0160rdjJEz0ds9tCX-Rj_sFezPRVJmgENzqyQqkYiKUOZj.json
+// https://collection.pushkinmuseum.art/cross-search?query=art
+// https://collection.pushkinmuseum.art/entity/OBJECT/787695?query=art&index=0
+// https://collection.pushkinmuseum.art/entity/OBJECT/135111?query=art&index=6
+// https://collection.pushkinmuseum.art/api/spf/qYrzjvdtckwaNjk7TC0160rdjJEz0ds9tCX-Rj_sFezPRVJmgENzqyQqkYiKUOZj.json
+// https://collection.pushkinmuseum.art/entity/OBJECT/77606?index=8&paginator=entity-set&entityType=PERSON&entityId=260&attribute=objects
