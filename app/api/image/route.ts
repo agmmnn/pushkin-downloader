@@ -2,6 +2,7 @@
 import axios, { AxiosResponse } from "axios";
 import https from "https";
 import Jimp from "jimp";
+import sizeOf from "image-size";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -20,21 +21,45 @@ export async function GET(request: Request): Promise<Response> {
   const match = html.match(regex);
   if (match) {
     const imageUrl: string = match[1];
-    const { width, height } = await getImageDimensions(imageUrl);
+
+    const [imageDimensions, tileDimensions] = await Promise.all([
+      getImageDimensions(imageUrl),
+      getTileDimensions(`${imageUrl}?w=2000&h=2000&cl=0&ct=0&cw=512&ch=512`),
+    ]);
+
+    const { width, height } = imageDimensions;
+    const { tileWidth, tileHeight } = tileDimensions;
+    console.log({ width, height }, { tileWidth, tileHeight });
 
     const wStep = Math.floor(width / tileSize);
     const hStep = Math.floor(height / tileSize);
     const wMod = width % tileSize;
     const hMod = height % tileSize;
+
+    const tileScaleRatio = tileWidth / tileSize;
+    // const { w, h } = {
+    //   w: Math.round(wMod || tileSize * tileScaleRatio),
+    //   h: Math.round(hMod || tileSize * tileScaleRatio),
+    // };
+
     const tileUrls: string[] = [];
 
     for (let i = 0; i < hStep + 1; i += 1) {
       for (let j = 0; j < wStep + 1; j += 1) {
         const cw = j === wStep ? wMod : tileSize;
         const ch = i === hStep ? hMod : tileSize;
+        const w =
+          j === wStep
+            ? Math.ceil(wMod * tileScaleRatio || tileSize * tileScaleRatio)
+            : tileWidth;
+        const h =
+          i === hStep
+            ? Math.ceil(hMod * tileScaleRatio || tileSize * tileScaleRatio)
+            : tileHeight;
+
         if (cw !== 0 && ch !== 0) {
           tileUrls.push(
-            `${imageUrl}?w=2000&h=2000&cl=${j * tileSize}&ct=${
+            `${imageUrl}?w=${w}&h=${h}&cl=${j * tileSize}&ct=${
               i * tileSize
             }&cw=${cw}&ch=${ch}`
           );
@@ -64,11 +89,31 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 async function getImageDimensions(
-  url: string
+  imageUrl: string
 ): Promise<{ width: number; height: number }> {
-  const response = await axiosWithSSL.get(url.replace(".jpg", ".json"));
+  const response = await axiosWithSSL.get(
+    imageUrl.replace(/\.(jpe?g)$/i, ".json")
+  );
   const { width, height } = response.data;
   return { width: width, height: height };
+}
+
+async function getTileDimensions(
+  tileUrl: string
+): Promise<{ tileWidth: number; tileHeight: number }> {
+  try {
+    const response = await axiosWithSSL.get(tileUrl, {
+      responseType: "arraybuffer",
+    });
+    const dimensions = sizeOf(response.data);
+    return {
+      tileWidth: dimensions.width as number,
+      tileHeight: dimensions.height as number,
+    };
+  } catch (error) {
+    console.error(error);
+    return { tileWidth: -1, tileHeight: -1 };
+  }
 }
 
 async function getMergedImage(
@@ -118,7 +163,7 @@ async function getMergedImage(
     (rows - 1) * maxHeight + ch * ratio
   );
 
-  return await croppedImage.getBufferAsync(Jimp.MIME_PNG);
+  return await mergedImage.getBufferAsync(Jimp.MIME_PNG);
 }
 
 // https://catalog.shm.ru/entity/OBJECT/2117418?fund_ier=647759298&index=33
@@ -132,3 +177,5 @@ async function getMergedImage(
 
 //https://collection.pushkinmuseum.art/cross-search?query=art
 //https://collection.pushkinmuseum.art/entity/OBJECT/787695?query=art&index=0
+//https://collection.pushkinmuseum.art/entity/OBJECT/135111?query=art&index=6
+//https://collection.pushkinmuseum.art/api/spf/qYrzjvdtckwaNjk7TC0160rdjJEz0ds9tCX-Rj_sFezPRVJmgENzqyQqkYiKUOZj.json
